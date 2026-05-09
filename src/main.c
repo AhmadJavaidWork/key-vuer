@@ -13,13 +13,26 @@
 #include <string.h>
 #include <dirent.h>
 
+#define INPUT_DEV_DIR "/dev/input/by-id"
+
 #define BUFFER_SIZE 30
+#define WIDTH 400
+#define HEIGHT 80
+#define FONT_SIZE 20
+#define Y_INSET 20
+#define X_INSET 20
+#define ROUNDNESS 0.25
+#define SEGMENTS 20
+#define R 30
+#define G 30
+#define B 46
+#define A 200
+#define X_PADDING 20
+
 struct pollfd *fds;
 
-#define inputDevDir "/dev/input/by-id"
-
 char displayBuffer[BUFFER_SIZE];
-char **files;
+char **devFiles;
 int devCount = 0;
 
 void writeKeyToBuffer(char *key, int *nextBufferWritePos) {
@@ -53,9 +66,9 @@ void *InputThread(void *arg) {
     fds = malloc(sizeof(struct pollfd *) * devCount);
 
     for (int i = 0; i < devCount; ++i) {
-        fds[i].fd = open(files[i], O_RDONLY | O_NONBLOCK);
+        fds[i].fd = open(devFiles[i], O_RDONLY | O_NONBLOCK);
         if (fds[i].fd < 0) {
-            printf("unable to open: %s\n", files[i]);
+            printf("unable to open: %s\n", devFiles[i]);
             exit(EXIT_SUCCESS);
         }
         fds[i].events = POLLIN;
@@ -67,12 +80,10 @@ void *InputThread(void *arg) {
         ret = poll(fds, devCount, timeoutMS);
 
         for (int i = 0; i < devCount && ret > 0; ++i) {
-            if (fds[i].revents & POLLIN) {
-                while (read(fds[i].fd, &ev, sizeof(ev)) > 0) {
-                    if (ev.type == EV_KEY) {
-                        char *key = prepareKey(ev.code, ev.value, &isShiftActive, &isCtrlActive, &isCapsLockActive);
-                        writeKeyToBuffer(key, &nextBufferWritePos);
-                    }
+            while (read(fds[i].fd, &ev, sizeof(ev)) > 0) {
+                if (ev.type == EV_KEY) {
+                    char *key = prepareKey(ev.code, ev.value, &isShiftActive, &isCtrlActive, &isCapsLockActive);
+                    writeKeyToBuffer(key, &nextBufferWritePos);
                 }
             }
         }
@@ -97,10 +108,10 @@ int main(int argc, char **argv) {
     DIR *dir;
     struct dirent *entry;
 
-    dir = opendir(inputDevDir);
+    dir = opendir(INPUT_DEV_DIR);
 
     if (dir == NULL) {
-        printf("could not open %s directory try running it with root priviliges\n", inputDevDir);
+        printf("could not open %s directory try running it with root priviliges\n", INPUT_DEV_DIR);
         return EXIT_FAILURE;
     }
 
@@ -109,25 +120,25 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        files = realloc(files, sizeof(char *) * (devCount + 1));
+        devFiles = realloc(devFiles, sizeof(char *) * (devCount + 1));
 
-        if (files == NULL) {
+        if (devFiles == NULL) {
             closedir(dir);
             printf("could not create memory for filenames\n");
             return EXIT_FAILURE;
         }
 
-        int len = snprintf(NULL, 0, "%s/%s", inputDevDir, entry->d_name);
+        int len = snprintf(NULL, 0, "%s/%s", INPUT_DEV_DIR, entry->d_name);
 
-        files[devCount] = malloc(len + 1);
+        devFiles[devCount] = malloc(len + 1);
 
-        if (files[devCount] == NULL) {
+        if (devFiles[devCount] == NULL) {
             closedir(dir);
             printf("could not create memory for filename\n");
             return EXIT_FAILURE;
         }
 
-        snprintf(files[devCount], len + 1, "%s/%s", inputDevDir, entry->d_name);
+        snprintf(devFiles[devCount], len + 1, "%s/%s", INPUT_DEV_DIR, entry->d_name);
 
         devCount++;
     }
@@ -135,7 +146,7 @@ int main(int argc, char **argv) {
     printf("total keyboards found: %d\n", devCount);
 
     for (int i = 0; i < devCount; ++i) {
-        printf("device names: %s\n", files[i]);
+        printf("device names: %s\n", devFiles[i]);
     }
 
     closedir(dir);
@@ -145,20 +156,19 @@ int main(int argc, char **argv) {
 
     SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_TOPMOST | FLAG_WINDOW_MOUSE_PASSTHROUGH | FLAG_WINDOW_TRANSPARENT);
 
-    InitWindow(400, 60, "KeyOverlay");
+    InitWindow(WIDTH, HEIGHT, "KeyOverlay");
     SetTargetFPS(60);
 
     int monitor = GetCurrentMonitor();
-    SetWindowPosition(GetMonitorWidth(monitor) - 950, GetMonitorHeight(monitor) - 80);
+    SetWindowPosition(GetMonitorWidth(monitor) - WIDTH - X_INSET, GetMonitorHeight(monitor) - HEIGHT - Y_INSET);
 
     while (!WindowShouldClose()) {
         BeginDrawing();
         {
             ClearBackground(BLANK);
-            DrawRectangleRounded((Rectangle){10, 20, 380, 30}, 0.5, 20, (Color){40, 40, 40, 200});
+            DrawRectangleRounded((Rectangle){5, 5, WIDTH - 10, HEIGHT - 10}, ROUNDNESS, SEGMENTS, (Color){R, G, B, A});
 
-            int textWidth = MeasureText(displayBuffer, 40);
-            DrawText(displayBuffer, 20, 25, 20, RAYWHITE);
+            DrawText(displayBuffer, X_PADDING, HEIGHT / 2 - FONT_SIZE / 2, FONT_SIZE, RAYWHITE);
         }
 
         EndDrawing();
