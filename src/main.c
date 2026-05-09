@@ -68,7 +68,7 @@ void *InputThread(void *arg) {
     for (int i = 0; i < devCount; ++i) {
         fds[i].fd = open(devFiles[i], O_RDONLY | O_NONBLOCK);
         if (fds[i].fd < 0) {
-            printf("unable to open: %s\n", devFiles[i]);
+            printf("INFO: Unable to open: %s\n", devFiles[i]);
             exit(EXIT_SUCCESS);
         }
         fds[i].events = POLLIN;
@@ -94,7 +94,9 @@ void *InputThread(void *arg) {
 
 void freeMemory() {
     for (int i = 0; i < devCount; ++i) {
-        close(fds[i].fd);
+        if (fds) {
+            close(fds[i].fd);
+        }
         free(devFiles[i]);
     }
     free(fds);
@@ -102,13 +104,13 @@ void freeMemory() {
 }
 
 void handle_sigint(int sig) {
-    printf("\ncaptured Ctrl+c! Flushing buffer and closing file...\n");
+    printf("\nINFO: Captured Ctrl+c! Flushing buffer and closing file...\n");
 
     freeMemory();
     exit(0);
 }
 
-int main(int argc, char **argv) {
+int main() {
     signal(SIGINT, handle_sigint);
 
     DIR *dir;
@@ -117,7 +119,7 @@ int main(int argc, char **argv) {
     dir = opendir(INPUT_DEV_DIR);
 
     if (dir == NULL) {
-        printf("could not open %s directory try running it with root priviliges\n", INPUT_DEV_DIR);
+        printf("ERROR: Could not open %s directory try running it with root priviliges\n", INPUT_DEV_DIR);
         return EXIT_FAILURE;
     }
 
@@ -130,7 +132,8 @@ int main(int argc, char **argv) {
 
         if (devFiles == NULL) {
             closedir(dir);
-            printf("could not create memory for filenames\n");
+            freeMemory();
+            printf("ERROR: Could not create memory for filenames\n");
             return EXIT_FAILURE;
         }
 
@@ -140,7 +143,8 @@ int main(int argc, char **argv) {
 
         if (devFiles[devCount] == NULL) {
             closedir(dir);
-            printf("could not create memory for filename\n");
+            freeMemory();
+            printf("ERROR: Could not create memory for filename\n");
             return EXIT_FAILURE;
         }
 
@@ -149,10 +153,10 @@ int main(int argc, char **argv) {
         devCount++;
     }
 
-    printf("total keyboards found: %d\n", devCount);
+    printf("INFO: Keyboard devices found: %d\n", devCount);
 
     for (int i = 0; i < devCount; ++i) {
-        printf("device names: %s\n", devFiles[i]);
+        printf("INFO: Device names: %s\n", devFiles[i]);
     }
 
     closedir(dir);
