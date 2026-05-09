@@ -92,13 +92,19 @@ void *InputThread(void *arg) {
     return NULL;
 }
 
+void freeMemory() {
+    for (int i = 0; i < devCount; ++i) {
+        close(fds[i].fd);
+        free(devFiles[i]);
+    }
+    free(fds);
+    free(devFiles);
+}
+
 void handle_sigint(int sig) {
     printf("\ncaptured Ctrl+c! Flushing buffer and closing file...\n");
 
-    for (int i = 0; i < devCount; ++i) {
-        close(fds[i].fd);
-    }
-
+    freeMemory();
     exit(0);
 }
 
@@ -175,5 +181,7 @@ int main(int argc, char **argv) {
     }
 
     CloseWindow();
+    freeMemory();
+
     return 0;
 }
