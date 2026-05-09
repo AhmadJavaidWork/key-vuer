@@ -1,7 +1,6 @@
 #include "prepareKey.h"
 #include <linux/input.h>
 #include <stdbool.h>
-#include <stdio.h>
 
 char *prepareKey(__u16 code, __s32 value, bool *isShiftActive, bool *isCtrlActive, bool *isCapsLockActive) {
     switch (code) {
@@ -326,6 +325,12 @@ char *prepareKey(__u16 code, __s32 value, bool *isShiftActive, bool *isCtrlActiv
     case KEY_PAGEDOWN:
         if (value != 0) {
             return "<Page Down />";
+        }
+        return "";
+
+    case KEY_INSERT:
+        if (value != 0) {
+            return "<Insert />";
         }
         return "";
 
