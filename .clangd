@@ -1,5 +1,0 @@
-CompileFlags:
-  Add:
-    - -I/usr/loca/cuda/include
-    - -x
-    - cuda
