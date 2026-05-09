@@ -11,14 +11,16 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
+#include <dirent.h>
 
 #define BUFFER_SIZE 30
-FILE *outputfile;
-struct pollfd fds[1];
+struct pollfd *fds;
+
+#define inputDevDir "/dev/input/by-id"
 
 char displayBuffer[BUFFER_SIZE];
-char *filename;
-char *outputfilename;
+char **files;
+int devCount = 0;
 
 void writeKeyToBuffer(char *key, int *nextBufferWritePos) {
     if (!strlen(key))
@@ -47,26 +49,30 @@ void *InputThread(void *arg) {
     bool isCapsLockActive = false;
     bool isShiftActive = false;
     bool isCtrlActive = false;
-    int currentbuffersize = 0;
     int nextBufferWritePos = 0;
+    fds = malloc(sizeof(struct pollfd *) * devCount);
 
-    fds[0].fd = open(filename, 0, O_RDONLY);
-    if (fds[0].fd < 0) {
-        printf("Unable to open: %s\n", filename);
-        exit(EXIT_SUCCESS);
+    for (int i = 0; i < devCount; ++i) {
+        fds[i].fd = open(files[i], O_RDONLY | O_NONBLOCK);
+        if (fds[i].fd < 0) {
+            printf("unable to open: %s\n", files[i]);
+            exit(EXIT_SUCCESS);
+        }
+        fds[i].events = POLLIN;
     }
 
     struct input_event ev;
-    fds[0].events = POLLIN;
 
     while (true) {
-        ret = poll(fds, 1, timeoutMS);
+        ret = poll(fds, devCount, timeoutMS);
 
-        if (ret > 0 && (fds[0].revents & POLLIN)) {
-            while (read(fds[0].fd, &ev, sizeof(ev)) > 0) {
-                if (ev.type == EV_KEY) {
-                    char *key = prepareKey(ev.code, ev.value, &isShiftActive, &isCtrlActive, &isCapsLockActive);
-                    writeKeyToBuffer(key, &nextBufferWritePos);
+        for (int i = 0; i < devCount && ret > 0; ++i) {
+            if (fds[i].revents & POLLIN) {
+                while (read(fds[i].fd, &ev, sizeof(ev)) > 0) {
+                    if (ev.type == EV_KEY) {
+                        char *key = prepareKey(ev.code, ev.value, &isShiftActive, &isCtrlActive, &isCapsLockActive);
+                        writeKeyToBuffer(key, &nextBufferWritePos);
+                    }
                 }
             }
         }
@@ -76,32 +82,63 @@ void *InputThread(void *arg) {
 }
 
 void handle_sigint(int sig) {
-    printf("\nCaptured Ctrl+c! Flushing buffer and closing file...\n");
-    if (outputfile != NULL) {
-        fclose(outputfile);
+    printf("\ncaptured Ctrl+c! Flushing buffer and closing file...\n");
+
+    for (int i = 0; i < devCount; ++i) {
+        close(fds[i].fd);
     }
-    if (fds[0].fd) {
-        close(fds[0].fd);
-    }
+
     exit(0);
 }
 
-void logKey(char *key, FILE *outputfile, int *currentbuffersize) {
-    fprintf(outputfile, "%s", key);
-    fflush(outputfile);
-}
-
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        printf("Invalid number of arguments\n");
-        printf("%s [device input filename]\n", argv[0]);
+    signal(SIGINT, handle_sigint);
+
+    DIR *dir;
+    struct dirent *entry;
+
+    dir = opendir(inputDevDir);
+
+    if (dir == NULL) {
+        printf("could not open %s directory try running it with root priviliges\n", inputDevDir);
         return EXIT_FAILURE;
     }
 
-    signal(SIGINT, handle_sigint);
+    while ((entry = readdir(dir)) != NULL) {
+        if (strstr(entry->d_name, "kbd") == NULL) {
+            continue;
+        }
 
-    filename = argv[1];
-    outputfilename = argv[2];
+        files = realloc(files, sizeof(char *) * (devCount + 1));
+
+        if (files == NULL) {
+            closedir(dir);
+            printf("could not create memory for filenames\n");
+            return EXIT_FAILURE;
+        }
+
+        int len = snprintf(NULL, 0, "%s/%s", inputDevDir, entry->d_name);
+
+        files[devCount] = malloc(len + 1);
+
+        if (files[devCount] == NULL) {
+            closedir(dir);
+            printf("could not create memory for filename\n");
+            return EXIT_FAILURE;
+        }
+
+        snprintf(files[devCount], len + 1, "%s/%s", inputDevDir, entry->d_name);
+
+        devCount++;
+    }
+
+    printf("total keyboards found: %d\n", devCount);
+
+    for (int i = 0; i < devCount; ++i) {
+        printf("device names: %s\n", files[i]);
+    }
+
+    closedir(dir);
 
     pthread_t input_threadId;
     pthread_create(&input_threadId, NULL, InputThread, NULL);
