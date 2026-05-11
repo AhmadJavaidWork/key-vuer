@@ -1,0 +1,4 @@
+leak:libnvidia-glcore.so
+leak:libdrm.so
+leak:libX11.so
+leak:libGLX_nvidia.so
