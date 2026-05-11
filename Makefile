@@ -1,5 +1,5 @@
 CC = clang 
-CCFlags = -Wall -Wextra -g -Wshadow -Wpointer-arith -Wcast-align -Wstrict-prototypes -fsanitize=address -fsanitize=undefined
+CCFlags = -std=c99 -D_DEFAULT_SOURCE -Wall -Wextra -g -Wshadow -Wpointer-arith -Wcast-align -Wstrict-prototypes -fsanitize=address -fsanitize=undefined
 LDFLAGS = -fsanitize=address -fsanitize=undefined -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 
 TARGET = key-veur.o
