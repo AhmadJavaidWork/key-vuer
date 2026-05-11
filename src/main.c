@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <dirent.h>
+#include <stdatomic.h>
 
 #define INPUT_DEV_DIR "/dev/input/by-id"
 
@@ -29,11 +30,33 @@
 #define A 200
 #define X_PADDING 20
 
-struct pollfd *fds;
+volatile atomic_bool keepRunning = true;
+
+struct pollfd *fds = NULL;
 
 char displayBuffer[BUFFER_SIZE];
 char **devFiles;
 int devCount = 0;
+
+void freeMemory() {
+    printf("freeing memory\n");
+    if (devFiles) {
+        for (int i = 0; i < devCount; ++i) {
+            free(devFiles[i]);
+        }
+        free(devFiles);
+        devFiles = NULL;
+    }
+
+    if (fds) {
+        for (int i = 0; i < devCount; ++i) {
+            if (fds[i].fd >= 0)
+                close(fds[i].fd);
+        }
+        free(fds);
+        fds = NULL;
+    }
+}
 
 void writeKeyToBuffer(char *key, int *nextBufferWritePos) {
     if (!strlen(key))
@@ -63,20 +86,21 @@ void *InputThread(void *arg) {
     bool isShiftActive = false;
     bool isCtrlActive = false;
     int nextBufferWritePos = 0;
-    fds = malloc(sizeof(struct pollfd *) * devCount);
+    fds = malloc(sizeof(struct pollfd) * devCount);
 
     for (int i = 0; i < devCount; ++i) {
         fds[i].fd = open(devFiles[i], O_RDONLY | O_NONBLOCK);
         if (fds[i].fd < 0) {
             printf("INFO: Unable to open: %s\n", devFiles[i]);
-            exit(EXIT_SUCCESS);
+            keepRunning = false;
+            return NULL;
         }
         fds[i].events = POLLIN;
     }
 
     struct input_event ev;
 
-    while (true) {
+    while (atomic_load(&keepRunning)) {
         ret = poll(fds, devCount, timeoutMS);
 
         for (int i = 0; i < devCount && ret > 0; ++i) {
@@ -92,22 +116,9 @@ void *InputThread(void *arg) {
     return NULL;
 }
 
-void freeMemory() {
-    for (int i = 0; i < devCount; ++i) {
-        if (fds) {
-            close(fds[i].fd);
-        }
-        free(devFiles[i]);
-    }
-    free(fds);
-    free(devFiles);
-}
-
 void handle_sigint(int sig) {
-    printf("\nINFO: Captured Ctrl+c! Flushing buffer and closing file...\n");
-
-    freeMemory();
-    exit(0);
+    printf("\nINFO: Captured Ctrl+c!\n");
+    keepRunning = false;
 }
 
 int main() {
@@ -172,7 +183,7 @@ int main() {
     int monitor = GetCurrentMonitor();
     SetWindowPosition(GetMonitorWidth(monitor) - WIDTH - X_INSET, GetMonitorHeight(monitor) - HEIGHT - Y_INSET);
 
-    while (!WindowShouldClose()) {
+    while (atomic_load(&keepRunning) && !WindowShouldClose()) {
         BeginDrawing();
         {
             ClearBackground(BLANK);
@@ -184,8 +195,10 @@ int main() {
         EndDrawing();
     }
 
+    atomic_store(&keepRunning, false);
+    pthread_join(input_threadId, NULL);
+
     CloseWindow();
     freeMemory();
-
     return 0;
 }
