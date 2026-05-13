@@ -29,7 +29,7 @@ You can follow instructions on how to setup raylib on GNU Linux at https://githu
 ```bash
 git clone git@github.com:AhmadJavaidWork/key-vuer.git
 cd key-vuer
-make && sudo ./key-veur.o
+make && sudo LSAN_OPTIONS=suppressions=lsan.supp ./key-veur.o
 ```
 
 ## Customize options
