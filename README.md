@@ -52,4 +52,5 @@ You can configure following options in src/main.c
 | B | Blue value for the background |
 | A | Transparency |
 | X_PADDING | Padding inside the rectangle |
+| FONT_SPACING | Spacing between fonts in pixels |
 
