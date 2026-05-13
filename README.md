@@ -2,8 +2,7 @@
 
 A high-performance, low-level key logging and visualization utility for Linux. This tool captures keystrokes directly from the Linux input subsystem and displays them in a sleek, transparent graphical overlay using the Raylib library.
 
-<img width="420" height="98" alt="image" src="https://github.com/user-attachments/assets/0c06e438-44f3-4235-9a1e-82d75ec7912c" />
-
+<img width="368" height="102" alt="image" src="https://github.com/user-attachments/assets/90f82c97-4e45-4cff-81a5-a15661688f33" />
 
 ## Features
 *   **Direct Input Capture:** Reads directly from `linux/input.h` for low-latency event processing.
