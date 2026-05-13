@@ -178,6 +178,9 @@ int main() {
     SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_TOPMOST | FLAG_WINDOW_MOUSE_PASSTHROUGH | FLAG_WINDOW_TRANSPARENT);
 
     InitWindow(WIDTH, HEIGHT, "KeyOverlay");
+
+    Font font = LoadFontEx("src/assets/fonts/JetBrainsMonoNerdFont-Regular.ttf", FONT_SIZE, NULL, 0);
+
     SetTargetFPS(60);
 
     int monitor = GetCurrentMonitor();
@@ -189,7 +192,7 @@ int main() {
             ClearBackground(BLANK);
             DrawRectangleRounded((Rectangle){5, 5, WIDTH - 10, HEIGHT - 10}, ROUNDNESS, SEGMENTS, (Color){R, G, B, A});
 
-            DrawText(displayBuffer, X_PADDING, HEIGHT / 2 - FONT_SIZE / 2, FONT_SIZE, RAYWHITE);
+            DrawTextEx(font, displayBuffer, (Vector2){X_PADDING, HEIGHT / 2.0 - FONT_SIZE / 2.0}, FONT_SIZE, 2, RAYWHITE);
         }
 
         EndDrawing();
@@ -200,5 +203,6 @@ int main() {
 
     CloseWindow();
     freeMemory();
+    UnloadFont(font);
     return 0;
 }
