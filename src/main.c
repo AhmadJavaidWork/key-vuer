@@ -17,7 +17,7 @@
 #define INPUT_DEV_DIR "/dev/input/by-id"
 
 #define BUFFER_SIZE 30
-#define WIDTH 400
+#define WIDTH 350
 #define HEIGHT 80
 #define FONT_SIZE 20
 #define Y_INSET 20
@@ -29,6 +29,7 @@
 #define B 46
 #define A 200
 #define X_PADDING 20
+#define FONT_SPACING 0
 
 volatile atomic_bool keepRunning = true;
 
@@ -178,9 +179,7 @@ int main() {
     SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_TOPMOST | FLAG_WINDOW_MOUSE_PASSTHROUGH | FLAG_WINDOW_TRANSPARENT);
 
     InitWindow(WIDTH, HEIGHT, "KeyOverlay");
-
     Font font = LoadFontEx("src/assets/fonts/JetBrainsMonoNerdFont-Regular.ttf", FONT_SIZE, NULL, 0);
-
     SetTargetFPS(60);
 
     int monitor = GetCurrentMonitor();
@@ -192,7 +191,7 @@ int main() {
             ClearBackground(BLANK);
             DrawRectangleRounded((Rectangle){5, 5, WIDTH - 10, HEIGHT - 10}, ROUNDNESS, SEGMENTS, (Color){R, G, B, A});
 
-            DrawTextEx(font, displayBuffer, (Vector2){X_PADDING, HEIGHT / 2.0 - FONT_SIZE / 2.0}, FONT_SIZE, 2, RAYWHITE);
+            DrawTextEx(font, displayBuffer, (Vector2){X_PADDING, HEIGHT / 2.0 - FONT_SIZE / 2.0}, FONT_SIZE, 0, RAYWHITE);
         }
 
         EndDrawing();
